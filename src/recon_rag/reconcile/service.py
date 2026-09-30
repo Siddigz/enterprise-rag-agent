@@ -5,8 +5,19 @@ from recon_rag.config import get_settings
 from recon_rag.models import CanonicalOrder, Discrepancy
 from recon_rag.reconcile.engine import Finding, Tolerances, reconcile
 
-FIELDS = ["source", "order_id", "customer_id", "order_date", "region", "sku", "quantity", "unit_price", "amount",
-          "currency", "status"]  # fmt: skip
+FIELDS = [
+    "source",
+    "order_id",
+    "customer_id",
+    "order_date",
+    "region",
+    "sku",
+    "quantity",
+    "unit_price",
+    "amount",
+    "currency",
+    "status",
+]
 
 
 def load_records(session: Session, order_id: str | None = None) -> list[dict]:

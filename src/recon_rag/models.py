@@ -2,7 +2,6 @@ from datetime import date, datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    JSON,
     Boolean,
     Computed,
     Date,
@@ -21,7 +20,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from recon_rag.config import get_settings
 
-JSONType = JSON().with_variant(JSONB(), "postgresql")
+JSONType = JSONB
 
 
 class Base(DeclarativeBase):

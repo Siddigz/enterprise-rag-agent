@@ -72,9 +72,15 @@ def reconcile(records: Iterable[dict[str, Any]], tol: Tolerances | None = None) 
             for src, recs in by_order.pop(oid).items():
                 by_order[target][src].extend(recs)
             findings.append(
-                Finding(target, "id_mismatch", "medium", sample.get("region"), sorted(srcs),
-                        {"reported_id": oid, "matched_on": ["customer_id", "order_date", "amount"]})
-            )  # fmt: skip
+                Finding(
+                    target,
+                    "id_mismatch",
+                    "medium",
+                    sample.get("region"),
+                    sorted(srcs),
+                    {"reported_id": oid, "matched_on": ["customer_id", "order_date", "amount"]},
+                )
+            )
 
     for oid in sorted(by_order):
         srcs = by_order[oid]
@@ -109,22 +115,53 @@ def _compare(
         ref.get("quantity") is not None and rec.get("quantity") is not None and ref["quantity"] != rec["quantity"]
     )
     if qty_mismatch:
-        out.append(Finding(oid, "quantity_mismatch", "medium", region, [ref_src, src],
-                           {ref_src: ref["quantity"], src: rec["quantity"]}))  # fmt: skip
+        out.append(
+            Finding(
+                oid,
+                "quantity_mismatch",
+                "medium",
+                region,
+                [ref_src, src],
+                {ref_src: ref["quantity"], src: rec["quantity"]},
+            )
+        )
     a, b = ref.get("amount"), rec.get("amount")
     # A quantity mismatch already explains a different line value; don't double count it.
     if a is not None and b is not None and not qty_mismatch and _amount_differs(float(a), float(b), tol):
         a, b = float(a), float(b)
         pct = abs(a - b) / max(abs(a), 1e-9)
-        out.append(Finding(oid, "amount_mismatch", "high" if pct > 0.1 else "medium", region, [ref_src, src],
-                           {ref_src: round(a, 2), src: round(b, 2), "difference": round(b - a, 2),
-                            "pct_difference": round(pct * 100, 2)}))  # fmt: skip
+        out.append(
+            Finding(
+                oid,
+                "amount_mismatch",
+                "high" if pct > 0.1 else "medium",
+                region,
+                [ref_src, src],
+                {
+                    ref_src: round(a, 2),
+                    src: round(b, 2),
+                    "difference": round(b - a, 2),
+                    "pct_difference": round(pct * 100, 2),
+                },
+            )
+        )
     if ref.get("currency") and rec.get("currency") and ref["currency"] != rec["currency"]:
-        out.append(Finding(oid, "currency_mismatch", "high", region, [ref_src, src],
-                           {ref_src: ref["currency"], src: rec["currency"]}))  # fmt: skip
+        out.append(
+            Finding(
+                oid,
+                "currency_mismatch",
+                "high",
+                region,
+                [ref_src, src],
+                {ref_src: ref["currency"], src: rec["currency"]},
+            )
+        )
     if ref.get("status") and rec.get("status") and ref["status"] != rec["status"]:
-        out.append(Finding(oid, "status_conflict", "medium", region, [ref_src, src],
-                           {ref_src: ref["status"], src: rec["status"]}))  # fmt: skip
+        out.append(
+            Finding(
+                oid, "status_conflict", "medium", region, [ref_src, src], {ref_src: ref["status"], src: rec["status"]}
+            )
+        )
     return out
 
 
