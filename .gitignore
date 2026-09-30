@@ -14,7 +14,6 @@ htmlcov/
 
 # generated data & reports
 data/raw/
-data/ground_truth.json
 reports/
 airflow/logs/
 
