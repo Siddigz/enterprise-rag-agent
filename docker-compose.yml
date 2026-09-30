@@ -1,0 +1,90 @@
+x-airflow: &airflow
+  image: apache/airflow:2.10.5-python3.11
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://recon:recon@postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    RECON_API_URL: http://api:8000
+    EVAL_SAMPLE_SIZE: ${EVAL_SAMPLE_SIZE:-}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./reports:/opt/airflow/reports
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: recon
+      POSTGRES_PASSWORD: recon
+      POSTGRES_DB: recon
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recon -d recon"]
+      interval: 5s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://recon:recon@postgres:5432/recon
+      DATA_DIR: /app/data/raw
+      REPORTS_DIR: /app/reports
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      AGENT_MODEL: ${AGENT_MODEL:-claude-opus-5-5}
+      JUDGE_MODEL: ${JUDGE_MODEL:-claude-opus-5-5}
+      EVAL_CONCURRENCY: ${EVAL_CONCURRENCY:-4}
+      GROUNDING_THRESHOLD: ${GROUNDING_THRESHOLD:-0.95}
+      ANSWER_ACCURACY_THRESHOLD: ${ANSWER_ACCURACY_THRESHOLD:-0.8}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 30
+
+  airflow-init:
+    <<: *airflow
+    command: version
+    environment:
+      <<: *airflow-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_USER:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_PASSWORD:-admin}
+
+  airflow-webserver:
+    <<: *airflow
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

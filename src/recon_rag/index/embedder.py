@@ -20,10 +20,10 @@ class Embedder(Protocol):
 class FastEmbedder:
     """Local ONNX embeddings (no API key). bge models expect a query instruction, which fastembed adds."""
 
-    def __init__(self, model: str, dim: int):
+    def __init__(self, model: str, dim: int, cache_dir: str | None = None):
         from fastembed import TextEmbedding
 
-        self.model = TextEmbedding(model_name=model)
+        self.model = TextEmbedding(model_name=model, cache_dir=cache_dir)
         self.dim = dim
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -60,4 +60,4 @@ def get_embedder() -> Embedder:
     s = get_settings()
     if s.embedding_provider == "hash":
         return HashEmbedder(s.embedding_dim)
-    return FastEmbedder(s.embedding_model, s.embedding_dim)
+    return FastEmbedder(s.embedding_model, s.embedding_dim, s.embedding_cache_dir)

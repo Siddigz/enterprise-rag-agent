@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: recon
+          POSTGRES_PASSWORD: recon
+          POSTGRES_DB: recon
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U recon -d recon"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://recon:recon@localhost:5432/recon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests airflow
+      - run: ruff format --check src tests
+      - name: DAG file compiles
+        run: python -m py_compile airflow/dags/rag_eval_pipeline.py
+      - run: pytest -v

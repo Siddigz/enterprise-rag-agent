@@ -120,7 +120,10 @@ def execute_run(
                     )
         metrics = compute_metrics(outcomes)
         ga = metrics["grounding_accuracy"]
-        passed = ga is not None and ga >= s.grounding_threshold
+        acc = metrics["answer_accuracy"]
+        passed = (
+            ga is not None and ga >= s.grounding_threshold and acc is not None and acc >= s.answer_accuracy_threshold
+        )
         with session_scope() as session:
             run = session.get(EvalRun, run_id)
             run.status, run.metrics, run.passed = "completed", metrics, passed
@@ -143,7 +146,8 @@ def render_report(run: EvalRun, results: list[EvalResult]) -> str:
         "",
         f"- Agent: `{run.agent_model}` · Judge: `{run.judge_model}` · Cases: {run.n_cases}",
         f"- Started {run.started_at:%Y-%m-%d %H:%M} UTC · Status: **{run.status}** · Gate: "
-        f"**{'PASS' if run.passed else 'FAIL'}** (grounding ≥ {pct(get_settings().grounding_threshold)})",
+        f"**{'PASS' if run.passed else 'FAIL'}** (grounding ≥ {pct(get_settings().grounding_threshold)}, "
+        f"answer accuracy ≥ {pct(get_settings().answer_accuracy_threshold)})",
         "",
         "| Metric | Value |",
         "|---|---|",

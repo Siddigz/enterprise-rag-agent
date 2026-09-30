@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     database_url: str = "postgresql+psycopg://recon:recon@localhost:5432/recon"
     data_dir: Path = Path("data/raw")
@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     embedding_provider: str = "fastembed"  # "fastembed" | "hash"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dim: int = 384
+    embedding_cache_dir: str | None = None
 
     # Retrieval
     retrieval_top_k: int = 8
@@ -41,6 +42,8 @@ class Settings(BaseSettings):
     eval_sample_size: int | None = None
     eval_concurrency: int = 4
     grounding_threshold: float = 0.95
+    # Grounding alone can be gamed (quote evidence, answer nothing useful), so the gate also needs accuracy.
+    answer_accuracy_threshold: float = 0.8
 
 
 @lru_cache

@@ -30,6 +30,11 @@ class GoldenCase:
         return asdict(self)
 
 
+def _sample(rng: random.Random, population: list, k: int) -> list:
+    """Like rng.sample, but tolerates small datasets with fewer candidates than requested."""
+    return rng.sample(population, min(k, len(population)))
+
+
 def _m(v: float) -> list[str]:
     return [f"{v:.2f}", f"{v:,.2f}"]
 
@@ -54,7 +59,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
         cases.append(GoldenCase(f"{cat}-{sum(c.category == cat for c in cases) + 1:03d}", cat, q, exp, facts, abstain))
 
     # --- order lookups (30)
-    for i, oid in enumerate(rng.sample(clean, 30)):
+    for i, oid in enumerate(_sample(rng, clean, 30)):
         o = orders[oid]
         t = i % 4
         if t == 0:
@@ -94,7 +99,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
         "duplicate_record": 4,
     }
     for kind, n in quota.items():
-        for d in rng.sample(by_kind[kind], min(n, len(by_kind[kind]))):
+        for d in _sample(rng, by_kind[kind], n):
             oid, det, srcs = d["order_id"], d["detail"], d["sources"]
             q = f"Do the source systems agree on order {oid}? If not, describe the discrepancy."
             if kind == "missing_record":
@@ -129,7 +134,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
                     f"No: {label} mismatch, {a} has {det[a]} but {b} has {det[b]}.",
                     [[label], [str(det[a])], [str(det[b])]],
                 )
-    for oid in rng.sample(clean, 10):
+    for oid in _sample(rng, clean, 10):
         add(
             "discrepancy",
             f"Do the source systems agree on order {oid}? If not, describe the discrepancy.",
@@ -142,7 +147,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
     for kind, n in sorted(kind_counts.items()):
         add("aggregate", f"How many {kind.replace('_', ' ')} discrepancies were detected in total?", str(n), [[str(n)]])
     region_kind = Counter((d["kind"], orders[d["order_id"]]["region"]) for d in discs)
-    for kind, region in rng.sample(sorted(region_kind), 6):
+    for kind, region in _sample(rng, sorted(region_kind), 6):
         n = region_kind[(kind, region)]
         add(
             "aggregate",
@@ -156,8 +161,9 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
         k = (o["region"], o["order_date"][:7])
         rm_count[k] += 1
         rm_sum[k] += o["amount"]
-    keys = rng.sample(sorted(rm_count), 10)
-    for region, month in keys[:5]:
+    keys = _sample(rng, sorted(rm_count), 10)
+    half = len(keys) // 2
+    for region, month in keys[:half]:
         n = rm_count[(region, month)]
         add(
             "aggregate",
@@ -165,7 +171,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
             str(n),
             [[str(n)]],
         )
-    for region, month in keys[5:]:
+    for region, month in keys[half:]:
         total = round(rm_sum[(region, month)], 2)
         ccy = {"NA": "USD", "EMEA": "EUR", "APAC": "AUD"}[region]
         add(
@@ -176,7 +182,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
         )
     am_by_region = Counter(orders[d["order_id"]]["region"] for d in by_kind["amount_mismatch"])
     top = am_by_region.most_common()
-    if len(top) == 1 or top[0][1] > top[1][1]:
+    if top and (len(top) == 1 or top[0][1] > top[1][1]):
         add(
             "aggregate",
             "Which region has the most amount mismatches between systems?",
@@ -250,7 +256,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
     )
 
     # --- multi-hop (15)
-    for d in rng.sample(by_kind["amount_mismatch"], 8):
+    for d in _sample(rng, by_kind["amount_mismatch"], 8):
         o = orders[d["order_id"]]
         diff = round(d["detail"]["erp"] - d["detail"]["crm"], 2)
         add(
@@ -261,7 +267,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
             [[o["customer_id"]], [f"{abs(diff):.2f}", f"{abs(diff):,.2f}"]],
         )
     cust_disc = Counter(orders[d["order_id"]]["customer_id"] for d in discs)
-    for cid, n in rng.sample(sorted(cust_disc.items()), 7):
+    for cid, n in _sample(rng, sorted(cust_disc.items()), 7):
         add("multi_hop", f"How many discrepancies involve orders placed by customer {cid}?", str(n), [[str(n)]])
 
     # --- unanswerable (20)
@@ -281,7 +287,7 @@ def build_golden(truth: dict, seed: int = 7) -> list[GoldenCase]:
             [],
             abstain=True,
         )
-    for oid in rng.sample(clean, 8):
+    for oid in _sample(rng, clean, 8):
         q = rng.choice(
             [
                 f"What discount code was applied to order {oid}?",

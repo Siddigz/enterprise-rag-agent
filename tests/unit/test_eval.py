@@ -69,3 +69,11 @@ def test_rrf_prefers_documents_ranked_well_in_multiple_lists():
 def test_query_helpers():
     assert or_tsquery("Why is SO-000123 wrong?") == "why | is | so | 000123 | wrong"
     assert extract_keys("compare so000123 and C0042") == (["SO-000123"], ["C-0042"])
+
+
+def test_golden_builds_on_tiny_datasets(tmp_path):
+    from recon_rag.datagen import generate
+
+    truth = generate(tmp_path / "tiny", n_orders=60, seed=1)
+    cases = build_golden(truth)
+    assert cases and all(c.question for c in cases)
