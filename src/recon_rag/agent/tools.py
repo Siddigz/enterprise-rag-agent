@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from recon_rag.index.chunker import describe_discrepancy, describe_drift, discrepancy_id
@@ -283,7 +284,7 @@ class ToolExecutor:
         base = (
             select(CanonicalOrder)
             .where(CanonicalOrder.source == a.source)
-            .distinct(CanonicalOrder.order_id)
+            .ext(distinct_on(CanonicalOrder.order_id))
             .order_by(CanonicalOrder.order_id, CanonicalOrder.id)
             .subquery()
         )
