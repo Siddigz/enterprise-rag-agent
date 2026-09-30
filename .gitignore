@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# generated data & reports
+data/raw/
+data/ground_truth.json
+reports/
+airflow/logs/
+
+# fastembed model cache
+.cache/
